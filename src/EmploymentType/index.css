@@ -1,0 +1,30 @@
+.container {
+  padding: 10px 0;
+}
+
+.container h3 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  color: #ffffff;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.option input {
+  margin-right: 10px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* optional hover effect */
+.option:hover {
+  color: #ffffff;
+}
