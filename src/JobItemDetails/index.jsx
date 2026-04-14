@@ -17,7 +17,7 @@ const JobItemDetails = () => {
   useEffect(() => {
     const getJobData = async () => {
       try {
-        const url = `https://apis.ccbp.in/jobs/${id}`
+        const url = `http://localhost:3000/jobs/${id}`
         const token = Cookies.get('jwt_token')
 
         const response = await fetch(url, {
@@ -34,23 +34,20 @@ const JobItemDetails = () => {
         const data = await response.json()
 
         const updatedData = {
-          companyLogoUrl: data.job_details.company_logo_url,
-          companyWebsiteUrl: data.job_details.company_website_url,
-          employmentType: data.job_details.employment_type,
-          id: data.job_details.id,
-          jobDescription: data.job_details.job_description,
-          location: data.job_details.location,
-          packagePerAnnum: data.job_details.package_per_annum,
-          title: data.job_details.title,
-          rating: data.job_details.rating,
+          companyLogoUrl: data.company_logo_url,
+          companyWebsiteUrl: data.company_website_url || '',
+          employmentType: data.employment_type,
+          id: data.id,
+          jobDescription: data.job_description,
+          location: data.location,
+          packagePerAnnum: data.package_per_annum,
+          title: data.title,
+          rating: data.rating,
           lifeAtCompany: {
-            description: data.job_details.life_at_company.description,
-            imageUrl: data.job_details.life_at_company.image_url,
+            description: 'No description available',
+            imageUrl: '',
           },
-          skills: data.job_details.skills.map(eachSkill => ({
-            name: eachSkill.name,
-            imageUrl: eachSkill.image_url,
-          })),
+          skills: [],
         }
 
         setJobData(updatedData)

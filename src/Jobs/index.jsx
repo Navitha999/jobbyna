@@ -22,7 +22,7 @@ const Jobs = () => {
 
     const activeTypes = employmentType.join(',')
 
-    const url = `https://apis.ccbp.in/jobs?employment_type=${activeTypes}&minimum_package=${salary}&search=${searchInput}`
+    const url = `http://localhost:3000/jobs?employment_type=${activeTypes}&minimum_package=${salary}&search=${searchInput}`
 
     const options = {
       headers: {
@@ -37,7 +37,7 @@ const Jobs = () => {
       if (response.ok) {
         const data = await response.json()
 
-        const updatedData = data.jobs.map(each => ({
+        const updatedData = data.map(each => ({
           id: each.id,
           title: each.title,
           location: each.location,
@@ -47,7 +47,7 @@ const Jobs = () => {
           companyLogoUrl: each.company_logo_url,
           jobDescription: each.job_description,
         }))
-
+        console.log(updatedData)
         setJobsList(updatedData)
       } else {
         console.error('Failed to fetch jobs')

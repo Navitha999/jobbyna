@@ -11,6 +11,8 @@ const Login = () => {
   const [password, setPassword] = useState("")
   const [errorMsg, setErrorMsg] = useState("")
   const [showError, setShowError] = useState(false)
+  const [successMsg, setSuccessMsg] = useState("")
+  const [showSuccess, setShowSuccess] = useState(false)
 
   const onSubmitSuccess = jwtToken => {
     Cookies.set("jwt_token", jwtToken, { expires: 30 })
@@ -36,10 +38,13 @@ if (getToken !== undefined) {
     }
     console.log(userDetails)
 
-    const url = "https://apis.ccbp.in/login"
+    const url = "http://localhost:3000/login"
 
     const options = {
       method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(userDetails),
     }
 
@@ -55,6 +60,45 @@ if (getToken !== undefined) {
     } catch {
       setShowError(true)
       setErrorMsg("Something went wrong")
+    }
+
+  }
+
+  const registerForm = async event => {
+    event.preventDefault()
+
+    const userDetails = {
+        username,
+        password,
+    }
+
+    const url = "http://localhost:3000/register"
+
+    const options = {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userDetails),
+    }
+
+    try {
+      const response = await fetch(url, options)
+      const data = await response.json()
+
+      if (response.ok) {
+        setShowSuccess(true)
+        setSuccessMsg(data.message)
+        setShowError(false)
+      } else {
+        setShowError(true)
+        setErrorMsg(data.message)
+        setShowSuccess(false)
+      }
+    } catch {
+      setShowError(true)
+      setErrorMsg("Something went wrong")
+      setShowSuccess(false)
     }
 
   }
@@ -90,7 +134,12 @@ if (getToken !== undefined) {
           Login
         </button>
 
+        <button className="registerBtn" type="button" onClick={registerForm}>
+          Register
+        </button>
+
         {showError && <p className="errorMsg">*{errorMsg}</p>}
+        {showSuccess && <p className="successMsg">*{successMsg}</p>}
       </form>
     </div>
   )

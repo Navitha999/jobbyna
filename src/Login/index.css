@@ -10,6 +10,16 @@
    align-self: center;
    margin-top: 5px;
 }
+.registerBtn{
+    height: 38px;
+    width: 120px;
+    border-radius: 5px;
+   background-color: rgb(34, 139, 34);
+   border: 0px;
+   color: white;
+   align-self: center;
+   margin-top: 10px;
+}
 .loginImage{
     height: 80px;
     width: 200px;
@@ -48,4 +58,14 @@
     border-radius: 3px;
     margin-bottom: 10px;
     color: white;
+}
+.errorMsg{
+    color: red;
+    font-size: 14px;
+    margin-top: 10px;
+}
+.successMsg{
+    color: green;
+    font-size: 14px;
+    margin-top: 10px;
 }
