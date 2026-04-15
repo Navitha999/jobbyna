@@ -14,7 +14,7 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 }));
 
-app.options("*", cors());
+// ❌ REMOVED: app.options("*", cors()); → this was crashing your app
 
 // ✅ JWT Secret
 const jwtSecret = process.env.JWT_SECRET || "MY_SECRET_TOKEN";
@@ -83,7 +83,7 @@ const serverCreation = async () => {
     console.log("⚠️ DB connection failed:", err.message);
   }
 
-  // ✅ ALWAYS start server
+  // ✅ ALWAYS start server (important for Render)
   const port = process.env.PORT || 3000;
 
   app.listen(port, "0.0.0.0", () => {
@@ -127,7 +127,7 @@ app.post("/register", async (req, res) => {
     res.status(201).json({ message: "User registered successfully ✅" });
 
   } catch (err) {
-    console.error(err);
+    console.error("Register error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -161,7 +161,7 @@ app.post("/login", async (req, res) => {
     res.json({ message: "Login success ✅", jwt_token: token });
 
   } catch (err) {
-    console.error(err);
+    console.error("Login error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -183,8 +183,7 @@ app.get("/jobs", verifyToken, async (req, res) => {
     }
 
     if (minimum_package) {
-      query +=
-        " AND CAST(SUBSTRING_INDEX(package_per_annum, ' ', 1) AS UNSIGNED) >= ?";
+      query += " AND CAST(SUBSTRING_INDEX(package_per_annum, ' ', 1) AS UNSIGNED) >= ?";
       params.push(parseInt(minimum_package));
     }
 
