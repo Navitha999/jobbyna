@@ -6,20 +6,29 @@ const mysql = require("mysql2/promise");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
+// ✅ Middleware
 app.use(express.json());
-app.use(cors());
-app.options('*', cors())
 
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+}));
+
+app.options("*", cors());
+
+// ✅ JWT Secret
 const jwtSecret = process.env.JWT_SECRET || "MY_SECRET_TOKEN";
 
-// 🔹 JWT Verification Middleware
+// 🔹 JWT Middleware
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
+
   if (!authHeader) {
     return res.status(401).json({ message: "Authorization header missing" });
   }
 
   const token = authHeader.split(" ")[1];
+
   if (!token) {
     return res.status(401).json({ message: "Token missing" });
   }
@@ -28,63 +37,63 @@ const verifyToken = (req, res, next) => {
     const decoded = jwt.verify(token, jwtSecret);
     req.user = decoded;
     next();
-  } catch (err) {
+  } catch {
     res.status(401).json({ message: "Invalid token" });
   }
 };
 
 let db = null;
 
-// 🔹 Server + DB connection
+// 🔹 Server + DB Setup
 const serverCreation = async () => {
   try {
-    const connection = await mysql.createConnection(process.env.MY_SQL_URL);
-    db = connection;
+    if (!process.env.MY_SQL_URL) {
+      console.log("❌ MY_SQL_URL is missing");
+    } else {
+      const connection = await mysql.createConnection(process.env.MY_SQL_URL);
+      db = connection;
 
-    console.log("Database connected successfully! ✅");
+      console.log("✅ Database connected");
 
-    // ✅ Create jobs table
-    const createJobsTable = `
-      CREATE TABLE IF NOT EXISTS jobs (
-        id VARCHAR(255) PRIMARY KEY,
-        title VARCHAR(255) NOT NULL,
-        rating INT NOT NULL,
-        company_logo_url TEXT,
-        company_website_url TEXT,
-        location VARCHAR(255),
-        job_description TEXT,
-        employment_type VARCHAR(255),
-        package_per_annum VARCHAR(255)
-      )
-    `;
-    await db.query(createJobsTable);
+      // Create tables
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          username VARCHAR(255) UNIQUE NOT NULL,
+          password VARCHAR(255) NOT NULL
+        )
+      `);
 
-    // ✅ Create users table
-    const createUsersTable = `
-      CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL
-      )
-    `;
-    await db.query(createUsersTable);
-
-    // ✅ FIXED: Bind to 0.0.0.0
-    const port = process.env.PORT || 3000;
-
-    app.listen(port, "0.0.0.0", () => {
-      console.log(`Server running on port ${port} 🚀`);
-    });
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS jobs (
+          id VARCHAR(255) PRIMARY KEY,
+          title VARCHAR(255),
+          rating INT,
+          company_logo_url TEXT,
+          company_website_url TEXT,
+          location VARCHAR(255),
+          job_description TEXT,
+          employment_type VARCHAR(255),
+          package_per_annum VARCHAR(255)
+        )
+      `);
+    }
 
   } catch (err) {
-    console.log(`Connection Error: ${err.message}`);
-    process.exit(1);
+    console.log("⚠️ DB connection failed:", err.message);
   }
+
+  // ✅ ALWAYS start server
+  const port = process.env.PORT || 3000;
+
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`🚀 Server running on port ${port}`);
+  });
 };
 
 serverCreation();
 
-// 🔹 REGISTER API
+// 🔹 REGISTER
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
 
@@ -97,72 +106,86 @@ app.post("/register", async (req, res) => {
   }
 
   try {
-    const checkUser = "SELECT * FROM users WHERE username = ?";
-    const [rows] = await db.query(checkUser, [username]);
+    if (!db) return res.status(500).json({ message: "DB not connected" });
+
+    const [rows] = await db.query(
+      "SELECT * FROM users WHERE username = ?",
+      [username]
+    );
 
     if (rows.length > 0) {
       return res.status(409).json({ message: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const insertUser = `INSERT INTO users (username, password) VALUES (?, ?)`;
 
-    await db.query(insertUser, [username, hashedPassword]);
+    await db.query(
+      "INSERT INTO users (username, password) VALUES (?, ?)",
+      [username, hashedPassword]
+    );
 
     res.status(201).json({ message: "User registered successfully ✅" });
 
   } catch (err) {
-    console.error("Register error:", err);
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// 🔹 LOGIN API
+// 🔹 LOGIN
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const getUser = "SELECT * FROM users WHERE username = ?";
-    const [rows] = await db.query(getUser, [username]);
-    const dbUser = rows[0];
+    if (!db) return res.status(500).json({ message: "DB not connected" });
 
-    if (!dbUser) {
+    const [rows] = await db.query(
+      "SELECT * FROM users WHERE username = ?",
+      [username]
+    );
+
+    const user = rows[0];
+
+    if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
 
-    const isMatch = await bcrypt.compare(password, dbUser.password);
+    const isMatch = await bcrypt.compare(password, user.password);
 
-    if (isMatch) {
-      const token = jwt.sign({ username: dbUser.username }, jwtSecret);
-      res.json({ message: "Login success ✅", jwt_token: token });
-    } else {
-      res.status(401).json({ message: "Invalid password" });
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid password" });
     }
 
+    const token = jwt.sign({ username: user.username }, jwtSecret);
+
+    res.json({ message: "Login success ✅", jwt_token: token });
+
   } catch (err) {
-    console.error("Login error:", err);
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// 🔹 GET JOBS API
+// 🔹 GET JOBS
 app.get("/jobs", verifyToken, async (req, res) => {
   try {
+    if (!db) return res.status(500).json({ message: "DB not connected" });
+
     const { employment_type, minimum_package, search } = req.query;
 
     let query = "SELECT * FROM jobs WHERE 1=1";
     const params = [];
 
     if (employment_type) {
-      const types = employment_type.split(",").map(type => type.trim());
+      const types = employment_type.split(",");
       query += ` AND employment_type IN (${types.map(() => "?").join(",")})`;
       params.push(...types);
     }
 
     if (minimum_package) {
-      const minPackageNum = parseInt(minimum_package);
-      query += " AND CAST(SUBSTRING_INDEX(package_per_annum, ' ', 1) AS UNSIGNED) >= ?";
-      params.push(minPackageNum);
+      query +=
+        " AND CAST(SUBSTRING_INDEX(package_per_annum, ' ', 1) AS UNSIGNED) >= ?";
+      params.push(parseInt(minimum_package));
     }
 
     if (search) {
@@ -181,10 +204,12 @@ app.get("/jobs", verifyToken, async (req, res) => {
 // 🔹 GET JOB BY ID
 app.get("/jobs/:id", verifyToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    if (!db) return res.status(500).json({ message: "DB not connected" });
 
-    const query = "SELECT * FROM jobs WHERE id = ?";
-    const [job] = await db.query(query, [id]);
+    const [job] = await db.query(
+      "SELECT * FROM jobs WHERE id = ?",
+      [req.params.id]
+    );
 
     if (job.length === 0) {
       return res.status(404).json({ message: "Job not found" });
