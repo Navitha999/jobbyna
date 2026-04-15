@@ -8,6 +8,7 @@ require("dotenv").config();
 
 app.use(express.json());
 app.use(cors());
+app.options('*', cors())
 
 const jwtSecret = process.env.JWT_SECRET || "MY_SECRET_TOKEN";
 

@@ -38,7 +38,7 @@ if (getToken !== undefined) {
     }
     console.log(userDetails)
 
-    const url = "https://jobbyna-3.onrender.com/login"
+    const url = "https://jobby-rchj.onrender.com/login"
 
     const options = {
       method: "POST",
@@ -73,7 +73,7 @@ if (getToken !== undefined) {
         password,
     }
 
-    const url = "https://jobbyna-3.onrender.com/register"
+    const url = "https://jobby-rchj.onrender.com/register"
 
     const options = {
       method: "POST",
