@@ -38,7 +38,7 @@ if (getToken !== undefined) {
     }
     console.log(userDetails)
 
-    const url = "http://localhost:3000/login"
+    const url = "https://jobbyna-3.onrender.com/login"
 
     const options = {
       method: "POST",
@@ -73,7 +73,7 @@ if (getToken !== undefined) {
         password,
     }
 
-    const url = "http://localhost:3000/register"
+    const url = "https://jobbyna-3.onrender.com/register"
 
     const options = {
       method: "POST",
@@ -86,6 +86,7 @@ if (getToken !== undefined) {
     try {
       const response = await fetch(url, options)
       const data = await response.json()
+      console.log(response)
 
       if (response.ok) {
         setShowSuccess(true)
