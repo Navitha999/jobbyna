@@ -4,9 +4,12 @@ const bcrypt = require("bcrypt");
 const cors = require("cors");
 const mysql = require("mysql2/promise");
 const jwt = require("jsonwebtoken");
-
+const { PROTOCOL } = require("sqlite3");
+require("dotenv").config(); // Load environment variables first
 app.use(express.json());
 app.use(cors());
+
+const jwtSecret = process.env.JWT_SECRET || "MY_SECRET_TOKEN";
 
 // 🔹 JWT Verification Middleware
 const verifyToken = (req, res, next) => {
@@ -19,7 +22,7 @@ const verifyToken = (req, res, next) => {
     return res.status(401).json({ message: "Token missing" });
   }
   try {
-    const decoded = jwt.verify(token, "MY_SECRET_TOKEN");
+    const decoded = jwt.verify(token, jwtSecret);
     req.user = decoded;
     next();
   } catch (err) {
@@ -29,18 +32,14 @@ const verifyToken = (req, res, next) => {
 
 let db = null;
 
-
 // 🔹 Server + DB connection
 const serverCreation = async () => {
   try {
-    const connection = await mysql.createConnection({
-      host: "localhost",
-      user: "root",
-      password: "navitha@4664",
-      database: "jobby",
-    });
+    // We prioritize MYSQLHOST and MYSQLPORT which are the public Railway variables
+    const connection = await mysql.createConnection(process.env.MY_SQL_URL);
 
     db = connection;
+    console.log("Database connected successfully! ✅");
 
     // ✅ Create jobs table if not exists
     const createJobsTable = `
@@ -58,28 +57,34 @@ const serverCreation = async () => {
     `;
     await db.query(createJobsTable);
 
+    // ✅ Create users table if not exists
+    const createUsersTable = `
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL
+      )
+    `;
+    await db.query(createUsersTable);
 
-
-    app.listen(3000, () => {
-      console.log("Server running on http://localhost:3000 🚀");
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => {
+      console.log(`Server running on http://localhost:${port} 🚀`);
     });
   } catch (err) {
-    console.log(`Error: ${err.message}`);
+    console.log(`Connection Error: ${err.message}`);
     process.exit(1);
   }
 };
 
 serverCreation();
 
-
 // 🔹 REGISTER API
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
-
   if (!username || !password) {
     return res.status(400).json({ message: "Username & password required" });
   }
-
   if (password.length < 8) {
     return res.status(400).json({ message: "Password must be at least 8 chars" });
   }
@@ -93,29 +98,22 @@ app.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const insertUser = `
-      INSERT INTO users (username, password)
-      VALUES (?, ?)
-    `;
-
+    const insertUser = `INSERT INTO users (username, password) VALUES (?, ?)`;
     await db.query(insertUser, [username, hashedPassword]);
 
     res.status(201).json({ message: "User registered successfully ✅" });
   } catch (err) {
+    console.error("Register error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-
 // 🔹 LOGIN API
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
-
   try {
     const getUser = "SELECT * FROM users WHERE username = ?";
     const [rows] = await db.query(getUser, [username]);
-
     const dbUser = rows[0];
 
     if (!dbUser) {
@@ -123,28 +121,22 @@ app.post("/login", async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, dbUser.password);
-
     if (isMatch) {
-      const token = jwt.sign(
-        { username: dbUser.username },
-        "MY_SECRET_TOKEN"
-      );
-
+      const token = jwt.sign({ username: dbUser.username }, jwtSecret);
       res.json({ message: "Login success ✅", jwt_token: token });
     } else {
       res.status(401).json({ message: "Invalid password" });
     }
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
-
 
 // 🔹 GET JOBS API
 app.get("/jobs", verifyToken, async (req, res) => {
   try {
     const { employment_type, minimum_package, search } = req.query;
-    
     let query = "SELECT * FROM jobs WHERE 1=1";
     const params = [];
     
@@ -155,8 +147,6 @@ app.get("/jobs", verifyToken, async (req, res) => {
     }
     
     if (minimum_package) {
-      // Assuming minimum_package is a number like 10, 20, etc.
-      // package_per_annum is like "10 LPA", so extract number
       const minPackageNum = parseInt(minimum_package);
       query += " AND CAST(SUBSTRING_INDEX(package_per_annum, ' ', 1) AS UNSIGNED) >= ?";
       params.push(minPackageNum);

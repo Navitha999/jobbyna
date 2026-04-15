@@ -51,6 +51,7 @@ if (getToken !== undefined) {
     try {
       const response = await fetch(url, options)
       const data = await response.json()
+      console.log(data)
 
       if (response.ok) {
         onSubmitSuccess(data.jwt_token)
