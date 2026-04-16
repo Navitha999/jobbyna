@@ -22,7 +22,7 @@ const Jobs = () => {
 
     const activeTypes = employmentType.join(',')
 
-    const url = `http://localhost:3000/jobs?employment_type=${activeTypes}&minimum_package=${salary}&search=${searchInput}`
+    const url = `https://jobby-rchj.onrender.com/jobs?employment_type=${activeTypes}&minimum_package=${salary}&search=${searchInput}`
 
     const options = {
       headers: {

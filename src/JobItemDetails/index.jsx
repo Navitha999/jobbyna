@@ -17,7 +17,7 @@ const JobItemDetails = () => {
   useEffect(() => {
     const getJobData = async () => {
       try {
-        const url = `http://localhost:3000/jobs/${id}`
+        const url = `https://jobby-rchj.onrender.com/jobs/${id}`
         const token = Cookies.get('jwt_token')
 
         const response = await fetch(url, {
