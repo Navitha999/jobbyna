@@ -176,22 +176,29 @@ app.get("/jobs", verifyToken, async (req, res) => {
     let query = "SELECT * FROM jobs WHERE 1=1";
     const params = [];
 
-    // ✅ FIX 1: Normalize employment_type properly
+    // ✅ FIX 1: Normalize employment_type (robust)
     if (employment_type) {
       const normalizeType = (type) => {
+        const t = type
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "")
+          .replace(/_/g, "");
+
         const map = {
-          FULLTIME: "Full Time",
-          PARTTIME: "Part Time",
-          FREELANCE: "Freelance",
-          INTERNSHIP: "Internship",
+          fulltime: "Full Time",
+          parttime: "Part Time",
+          freelance: "Freelance",
+          internship: "Internship",
         };
-        return map[type.trim().toUpperCase()];
+
+        return map[t];
       };
 
       const types = employment_type
         .split(",")
         .map(normalizeType)
-        .filter(Boolean); // remove undefined
+        .filter(Boolean);
 
       if (types.length > 0) {
         query += ` AND employment_type IN (${types.map(() => "?").join(",")})`;
@@ -199,20 +206,23 @@ app.get("/jobs", verifyToken, async (req, res) => {
       }
     }
 
-    // ✅ FIX 2: safer package filtering
+    // ✅ FIX 2: Salary filter (LPA → rupees conversion)
     if (minimum_package) {
       query += `
-        AND CAST(SUBSTRING_INDEX(package_per_annum, ' ', 1) AS DECIMAL(10,2)) >= ?
+        AND (
+          CAST(SUBSTRING_INDEX(package_per_annum, ' ', 1) AS DECIMAL(10,2)) * 100000
+        ) >= ?
       `;
       params.push(Number(minimum_package));
     }
 
-    // ✅ FIX 3: search filter (safe check)
+    // ✅ FIX 3: Search filter
     if (search && search.trim() !== "") {
       query += " AND (title LIKE ? OR job_description LIKE ?)";
       params.push(`%${search}%`, `%${search}%`);
     }
 
+    // 🔍 Debug logs (optional)
     console.log("QUERY:", query);
     console.log("PARAMS:", params);
 
