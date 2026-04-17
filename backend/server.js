@@ -172,31 +172,55 @@ app.get("/jobs", verifyToken, async (req, res) => {
     if (!db) return res.status(500).json({ message: "DB not connected" });
 
     const { employment_type, minimum_package, search } = req.query;
-    console.log(req.query)
 
     let query = "SELECT * FROM jobs WHERE 1=1";
     const params = [];
 
+    // ✅ FIX 1: Normalize employment_type properly
     if (employment_type) {
-      const types = employment_type.split(",");
-      query += ` AND employment_type IN (${types.map(() => "?").join(",")})`;
-      params.push(...types);
+      const normalizeType = (type) => {
+        const map = {
+          FULLTIME: "Full Time",
+          PARTTIME: "Part Time",
+          FREELANCE: "Freelance",
+          INTERNSHIP: "Internship",
+        };
+        return map[type.trim().toUpperCase()];
+      };
+
+      const types = employment_type
+        .split(",")
+        .map(normalizeType)
+        .filter(Boolean); // remove undefined
+
+      if (types.length > 0) {
+        query += ` AND employment_type IN (${types.map(() => "?").join(",")})`;
+        params.push(...types);
+      }
     }
 
+    // ✅ FIX 2: safer package filtering
     if (minimum_package) {
-      query += " AND CAST(SUBSTRING_INDEX(package_per_annum, ' ', 1) AS UNSIGNED) >= ?";
-      params.push(parseInt(minimum_package));
+      query += `
+        AND CAST(SUBSTRING_INDEX(package_per_annum, ' ', 1) AS DECIMAL(10,2)) >= ?
+      `;
+      params.push(Number(minimum_package));
     }
 
-    if (search) {
+    // ✅ FIX 3: search filter (safe check)
+    if (search && search.trim() !== "") {
       query += " AND (title LIKE ? OR job_description LIKE ?)";
       params.push(`%${search}%`, `%${search}%`);
     }
+
+    console.log("QUERY:", query);
+    console.log("PARAMS:", params);
 
     const [jobs] = await db.query(query, params);
     res.json(jobs);
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Error fetching jobs" });
   }
 });
