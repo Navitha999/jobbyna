@@ -172,6 +172,7 @@ app.get("/jobs", verifyToken, async (req, res) => {
     if (!db) return res.status(500).json({ message: "DB not connected" });
 
     const { employment_type, minimum_package, search } = req.query;
+    console.log(req.query)
 
     let query = "SELECT * FROM jobs WHERE 1=1";
     const params = [];
